@@ -4,65 +4,67 @@ import (
 	"os"
 	"sort"
 	"strconv"
-	"winwin"
+	"winwin/league"
+	"winwin/match"
+	"winwin/team"
 
 	"github.com/olekukonko/tablewriter"
 )
 
+type row struct {
+	t *team.Team
+	*league.Standing
+}
+
 func main() {
 	teams := getTeams()
-
-	league := winwin.NewLeague(teams)
+	league := league.New(teams)
 
 	for _, m := range league.Matches {
-		winwin.SimulateMatch(m)
+		match.Simulate(m)
 	}
 
-	fixture := winwin.NewFixture(*league)
+	renderStandings(league)
+}
+
+func renderStandings(l *league.League) {
+	rows := leagueRows(l)
 
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"", "Team", "OM", "G", "B", "M", "A", "P"})
 
-	sort.SliceStable(fixture, func(i, j int) bool {
-		return fixture[i].Score > fixture[j].Score
+	sort.SliceStable(rows, func(i, j int) bool {
+		return rows[i].Score > rows[j].Score
 	})
 
-	for i, s := range fixture {
-		table.Append([]string{
-			strconv.Itoa(i + 1),
-			s.Team.Name,
-			strconv.Itoa(s.Games),
-			strconv.Itoa(s.Wins),
-			strconv.Itoa(s.Ties),
-			strconv.Itoa(s.Loses),
-			strconv.Itoa(s.Avg),
-			strconv.Itoa(s.Score),
-		})
+	for i, s := range rows {
+		r := tableRow(i+1, s)
+		table.Append(r)
 	}
+
 	table.Render() // Send output
 }
 
-func getTeams() []*winwin.Team {
-	tt := make([]*winwin.Team, 0)
+func leagueRows(l *league.League) []*row {
+	rows := make([]*row, 0)
+	standings := l.Standings()
 
-	tt = append(tt, &winwin.Team{Name: "Galatasaray", Strength: 12})
-	tt = append(tt, &winwin.Team{Name: "Fenerbahçe", Strength: 10})
-	tt = append(tt, &winwin.Team{Name: "Başakşehir", Strength: 11})
-	tt = append(tt, &winwin.Team{Name: "Beşiktaş", Strength: 10})
-	tt = append(tt, &winwin.Team{Name: "Trabzonspor", Strength: 8})
-	tt = append(tt, &winwin.Team{Name: "Göztepe", Strength: 7})
-	tt = append(tt, &winwin.Team{Name: "Sivasspor", Strength: 7})
-	tt = append(tt, &winwin.Team{Name: "Kasımpaşa", Strength: 7})
-	tt = append(tt, &winwin.Team{Name: "Kayserispor", Strength: 6})
-	tt = append(tt, &winwin.Team{Name: "Yeni Malatya", Strength: 6})
-	tt = append(tt, &winwin.Team{Name: "Akhisar", Strength: 6})
-	tt = append(tt, &winwin.Team{Name: "Alanyaspor", Strength: 6})
-	tt = append(tt, &winwin.Team{Name: "Bursaspor", Strength: 6})
-	tt = append(tt, &winwin.Team{Name: "Antalyaspor", Strength: 5})
-	tt = append(tt, &winwin.Team{Name: "Konyaspor", Strength: 5})
-	tt = append(tt, &winwin.Team{Name: "Osmanlıspor", Strength: 4})
-	tt = append(tt, &winwin.Team{Name: "Gençlerbirliği", Strength: 4})
-	tt = append(tt, &winwin.Team{Name: "Karabükspor", Strength: 2})
+	for t, s := range standings {
+		rows = append(rows, &row{t, s})
+	}
 
-	return tt
+	return rows
+}
+
+func tableRow(order int, s *row) []string {
+	return []string{
+		strconv.Itoa(order),
+		s.t.Name,
+		strconv.Itoa(s.Games),
+		strconv.Itoa(s.Wins),
+		strconv.Itoa(s.Ties),
+		strconv.Itoa(s.Loses),
+		strconv.Itoa(s.Avg),
+		strconv.Itoa(s.Score),
+	}
 }
